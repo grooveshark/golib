@@ -1,5 +1,9 @@
 package gslog
 
+import (
+	"os"
+)
+
 // logLevel is the severity of a log message
 type LogLevel int
 
@@ -42,7 +46,10 @@ func Error(msg string, params ...interface{}) {
 	log(ERROR, &msg, params)
 }
 
-// Fatal writes a message to the log with fatal severity
+// Fatal writes a message to the log with fatal severity, flushes any
+// messages waiting to be written, and exits with a non-zero status
 func Fatal(msg string, params ...interface{}) {
 	log(FATAL, &msg, params)
+	Flush()
+	os.Exit(1)
 }

@@ -1,8 +1,10 @@
 package gslog
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -30,11 +32,28 @@ func init() {
 }
 
 // SetMinimumLevel sets the minimum log level that will be output to the error
-// log. Any log message of a lower severity will be silently ignored
-func SetMinimumLevel(level LogLevel) {
+// log.  The capitilization of level does not matter.  Any log message of a
+// lower severity will be silently ignored.
+func SetMinimumLevel(level string) error {
 	l.RWMutex.Lock()
 	defer l.RWMutex.Unlock()
-	l.minLevel = level
+	var levelConstant LogLevel
+	switch level = strings.ToUpper(level); level {
+	case "DEBUG":
+		levelConstant = DEBUG
+	case "INFO":
+		levelConstant = INFO
+	case "WARN":
+		levelConstant = WARN
+	case "ERROR":
+		levelConstant = ERROR
+	case "FATAL":
+		levelConstant = FATAL
+	default:
+		return errors.New("invalid log level")
+	}
+	l.minLevel = levelConstant
+	return nil
 }
 
 // SetLogFile sets the file to which messages will be logged to
@@ -52,7 +71,7 @@ func SetLogFile(path string) error {
 		fh = os.Stderr
 	} else {
 		flags := os.O_APPEND | os.O_CREATE | os.O_WRONLY
-		fh, err = os.OpenFile(path,flags,0644)
+		fh, err = os.OpenFile(path, flags, 0644)
 	}
 
 	if err != nil {

@@ -33,12 +33,12 @@ func init() {
 
 // SetMinimumLevel sets the minimum log level that will be output to the error
 // log.  The capitilization of level does not matter.  Any log message of a
-// lower severity will be silently ignored.
+// lower severity will be silently ignored.  Default is DEBUG.
 func SetMinimumLevel(level string) error {
 	l.RWMutex.Lock()
 	defer l.RWMutex.Unlock()
 	var levelConstant LogLevel
-	switch level = strings.ToUpper(level); level {
+	switch strings.ToUpper(level) {
 	case "DEBUG":
 		levelConstant = DEBUG
 	case "INFO":
@@ -56,7 +56,7 @@ func SetMinimumLevel(level string) error {
 	return nil
 }
 
-// SetLogFile sets the file to which messages will be logged to
+// SetLogFile sets the file to which messages will be logged to.  Default is STDOUT.
 func SetLogFile(path string) error {
 	l.RWMutex.Lock()
 	defer l.RWMutex.Unlock()

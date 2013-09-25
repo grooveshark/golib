@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# Print out help
+for arg in "$@"; do
+    if [[ "$arg" -eq "-h" || "$arg" -eq "--help" ]]; then
+        echo "Usage: `basename $0` PATH
+        
+A wrapper for 'go build' that assigns the latest commit hash and comment to a
+a global variable 'buildCommit' and the date to 'buildDate'.  These need to be
+declared in the main package."
+        exit
+    fi
+done
+
+# Check for required argument
+if [[ "$1" -eq "" ]]; then
+    echo "`basename $0`: must specify path"
+    exit 1
+fi
+
+PATH=$1
+
+if [[ "$PATH" -f ]]; then
+    DIR="$( dirname "$( realpath "$1" )" )"
+else
+    DIR=$PATH
+fi
+cd $DIR
+COMMIT="`git log --abbrev-commit --oneline -n 1`"
+DATE="`date -u '+%Y.%m.%d %H:%M:%S'` UTC"
+LDFLAGS="-X main.buildCommit '$COMMIT' -X main.buildDate '$DATE'"
+
+which goat &> /dev/null
+if [[ "$?" -eq "0" ]]; then
+    goat build -ldflags "$LDFLAGS" $PATH
+else
+    go build -ldflags "$LDFLAGS" $PATH
+fi

@@ -18,12 +18,12 @@ if [[ "$1" -eq "" ]]; then
     exit 1
 fi
 
-PATH=$1
+LOC=$1
 
-if [[ "$PATH" -f ]]; then
+if [[ -f "$LOC" ]]; then
     DIR="$( dirname "$( realpath "$1" )" )"
 else
-    DIR=$PATH
+    DIR=$LOC
 fi
 cd $DIR
 COMMIT="`git log --abbrev-commit --oneline -n 1`"
@@ -32,7 +32,7 @@ LDFLAGS="-X main.buildCommit '$COMMIT' -X main.buildDate '$DATE'"
 
 which goat &> /dev/null
 if [[ "$?" -eq "0" ]]; then
-    goat build -ldflags "$LDFLAGS" $PATH
+    goat build -ldflags "$LDFLAGS" $LOC
 else
-    go build -ldflags "$LDFLAGS" $PATH
+    go build -ldflags "$LDFLAGS" $LOC
 fi

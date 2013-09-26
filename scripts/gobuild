@@ -2,7 +2,7 @@
 
 # Print out help
 for arg in "$@"; do
-    if [[ "$arg" -eq "-h" || "$arg" -eq "--help" ]]; then
+    if [[ "$arg" = "-h" || "$arg" = "--help" ]]; then
         echo "Usage: `basename $0` PATH
         
 A wrapper for 'go build' that assigns the latest commit hash and comment to a
@@ -12,16 +12,20 @@ declared in the main package."
     fi
 done
 
-# Check for required argument
-if [[ "$1" -eq "" ]]; then
-    echo "`basename $0`: must specify path"
+ARG=$1
+
+if [[ "$ARG" = "" ]]; then
+    ARG="."
+fi
+if [[ ! -e "$ARG" ]]; then
+    echo "`basename $0`: must specify valid path"
     exit 1
 fi
 
-LOC=$1
+LOC=$ARG
 
 if [[ -f "$LOC" ]]; then
-    DIR="$( dirname "$( realpath "$1" )" )"
+    DIR="$( dirname "$( realpath "$ARG" )" )"
 else
     DIR=$LOC
 fi

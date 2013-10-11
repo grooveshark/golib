@@ -14,6 +14,7 @@ type message string
 type logger struct {
 	sync.RWMutex
 	fileHandle *os.File
+	filePath	string
 	messages   chan *message
 	flushCh    chan chan bool
 	minLevel   LogLevel
@@ -57,6 +58,7 @@ func SetMinimumLevel(level string) error {
 }
 
 // SetLogFile sets the file to which messages will be logged to.  Default is STDOUT.
+// 
 func SetLogFile(path string) error {
 	l.RWMutex.Lock()
 	defer l.RWMutex.Unlock()
@@ -65,6 +67,8 @@ func SetLogFile(path string) error {
 	var err error = nil
 
 	if path == "stderr" {
+		// Clear filePath so it doesn't get reopenned
+		l.filePath = ""
 		if l.fileHandle == os.Stderr {
 			return nil
 		}
@@ -80,6 +84,9 @@ func SetLogFile(path string) error {
 		l.fileHandle.Sync()
 		l.fileHandle.Close()
 		l.fileHandle = fh
+		if path != "stderr" {
+			l.filePath = path
+		}
 	}
 
 	return nil
@@ -120,7 +127,12 @@ func writeMessage(msg *message) {
 	defer l.RWMutex.RUnlock()
 
 	_, err := l.fileHandle.WriteString(string(*msg))
-	if err != nil {
+	if err != nil && l.filePath != "" { // Try to reopen and write one more time
+		if err = SetLogFile(l.filePath); err != nil {
+			_, err = l.fileHandle.WriteString(string(*msg))
+		}
+	}
+	if err != nil { // If still an error writing, set to stderr
 		errstr := err.Error()
 		str := logString(ERROR, &errstr, []interface{}{})
 		os.Stderr.WriteString(str)

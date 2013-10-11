@@ -58,6 +58,7 @@ func SetMinimumLevel(level string) error {
 }
 
 // SetLogFile sets the file to which messages will be logged to.  Default is STDOUT.
+// 
 func SetLogFile(path string) error {
 	l.RWMutex.Lock()
 	defer l.RWMutex.Unlock()
@@ -73,7 +74,6 @@ func SetLogFile(path string) error {
 		}
 		fh = os.Stderr
 	} else {
-		l.filePath = path
 		flags := os.O_APPEND | os.O_CREATE | os.O_WRONLY
 		fh, err = os.OpenFile(path, flags, 0644)
 	}
@@ -84,6 +84,9 @@ func SetLogFile(path string) error {
 		l.fileHandle.Sync()
 		l.fileHandle.Close()
 		l.fileHandle = fh
+		if path != "stderr" {
+			l.filePath = path
+		}
 	}
 
 	return nil
@@ -124,11 +127,10 @@ func writeMessage(msg *message) {
 	defer l.RWMutex.RUnlock()
 
 	_, err := l.fileHandle.WriteString(string(*msg))
-	if err != nil { // Try to reopen and write one more time
-		// Assumes filePath is set as it should be impossible to error writing
-		// to stderr
-		SetLogFile(l.filePath)
-		_, err = l.fileHandle.WriteString(string(*msg))
+	if err != nil && l.filePath != "" { // Try to reopen and write one more time
+		if err = SetLogFile(l.filePath); err != nil {
+			_, err = l.fileHandle.WriteString(string(*msg))
+		}
 	}
 	if err != nil { // If still an error writing, set to stderr
 		errstr := err.Error()

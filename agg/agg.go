@@ -3,6 +3,8 @@ package agg
 import (
 	"fmt"
 	"sort"
+	"text/tabwriter"
+	"os"
 )
 
 type aggMsg struct {
@@ -55,14 +57,17 @@ func spin() {
 			}
 			m[msg.name] = append(m[msg.name], msg.n)
 		case div := <- printCh:
+			w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
 			fmt.Println("--- aggregator stats ---")
 			for n, ls := range m {
 				min, max, med, avg := stats(ls, div)
-				fmt.Printf(
-					"%s | total events: %d | median: %f | avg: %f |  min/max: %f/%f\n",
+				fmt.Fprintf(
+					w,
+					"%s\ttotal events: %d\tmedian: %f\tavg: %f\tmin/max: %f/%f\n",
 					n, len(ls), med, avg, min, max,
 				)
 			}
+			w.Flush()
 		}
 	}
 

@@ -32,7 +32,7 @@ fi
 cd $DIR
 COMMIT="`git log --abbrev-commit --oneline -n 1`"
 DATE="`date -u '+%Y.%m.%d %H:%M:%S'` UTC"
-RUNTIME="`go version | sed -rn 's/.*(go[^ ]+).*/\1/p'`"
+RUNTIME="`go version | sed -En 's/.*(go[^ ]+).*/\1/p'`"
 LDFLAGS="-X main.buildCommit '$COMMIT' -X main.buildDate '$DATE' -X main.buildRuntime '$RUNTIME'"
 
 which goat &> /dev/null

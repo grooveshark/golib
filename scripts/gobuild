@@ -6,8 +6,8 @@ for arg in "$@"; do
         echo "Usage: `basename $0` PATH
         
 A wrapper for 'go build' that assigns the latest commit hash and comment to a
-a global variable 'buildCommit' and the date to 'buildDate'.  These need to be
-declared in the main package."
+a global variable 'buildCommit', the date to 'buildDate', and the go runtime
+version to 'buildRuntime'.  These need to be declared in the main package."
         exit
     fi
 done
@@ -32,7 +32,8 @@ fi
 cd $DIR
 COMMIT="`git log --abbrev-commit --oneline -n 1`"
 DATE="`date -u '+%Y.%m.%d %H:%M:%S'` UTC"
-LDFLAGS="-X main.buildCommit '$COMMIT' -X main.buildDate '$DATE'"
+RUNTIME="`go version | sed -rn 's/.*(go[^ ]+).*/\1/p'`"
+LDFLAGS="-X main.buildCommit '$COMMIT' -X main.buildDate '$DATE' -X main.buildRuntime '$RUNTIME'"
 
 which goat &> /dev/null
 if [[ "$?" -eq "0" ]]; then

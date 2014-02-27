@@ -30,7 +30,8 @@ else
     DIR=$LOC
 fi
 cd $DIR
-COMMIT="`git log --abbrev-commit --oneline -n 1`"
+# Remove any quotes to avoid parsing weirdness
+COMMIT="`git log --abbrev-commit --oneline -n 1 | sed s/\'//g | sed 's/\\\"//g'`"
 DATE="`date -u '+%Y.%m.%d %H:%M:%S'` UTC"
 RUNTIME="`go version | sed -En 's/.*(go[^ ]+).*/\1/p'`"
 LDFLAGS="-X main.buildCommit '$COMMIT' -X main.buildDate '$DATE' -X main.buildRuntime '$RUNTIME'"

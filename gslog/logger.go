@@ -15,7 +15,7 @@ type logger struct {
 	sync.RWMutex
 	fileHandle *os.File
 	messages   chan *message
-	flushCh    chan chan bool
+	flushCh    chan struct{}
 	minLevel   LogLevel
 }
 
@@ -26,7 +26,7 @@ func init() {
 	l = &logger{}
 	l.fileHandle = os.Stderr
 	l.messages = make(chan *message, 1024)
-	l.flushCh = make(chan chan bool)
+	l.flushCh = make(chan struct{})
 
 	go handleMessages()
 }
@@ -56,7 +56,9 @@ func SetMinimumLevel(level string) error {
 	return nil
 }
 
-// SetLogFile sets the file to which messages will be logged to.  Default is STDOUT.
+// SetLogFile sets the file to which messages will be logged to. Can take
+// "stdout" or "stderr" to log to os.Stdout and os.Stderr, respectively. If
+// unset defaults to os.Stderr
 func SetLogFile(path string) error {
 	l.RWMutex.Lock()
 	defer l.RWMutex.Unlock()
@@ -69,6 +71,11 @@ func SetLogFile(path string) error {
 			return nil
 		}
 		fh = os.Stderr
+	} else if path == "stdout" {
+		if l.fileHandle == os.Stdout {
+			return nil
+		}
+		fh = os.Stdout
 	} else {
 		flags := os.O_APPEND | os.O_CREATE | os.O_WRONLY
 		fh, err = os.OpenFile(path, flags, 0644)
@@ -87,9 +94,7 @@ func SetLogFile(path string) error {
 
 // Flushes the log of at least 100 milliseconds worth of entries
 func Flush() {
-	retCh := make(chan bool)
-	l.flushCh <- retCh
-	<-retCh
+	l.flushCh <- struct{}{}
 }
 
 // logString generates the string which will be written to the logfile
@@ -146,8 +151,7 @@ func handleMessages() {
 
 		case <-time.After(100 * time.Millisecond):
 			select {
-			case flushret := <-l.flushCh:
-				flushret <- true
+			case <-l.flushCh:
 			default: // Oh well
 			}
 

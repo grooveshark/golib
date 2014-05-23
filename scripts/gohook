@@ -32,3 +32,5 @@ done
 
 exit 1
 EOF
+
+chmod +x $GITROOT/.git/hooks/pre-commit

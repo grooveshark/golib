@@ -22,10 +22,7 @@ func MkDirP(ec *etcd.Client, dir string) error {
     for i := range parts {
         ai := len(parts) - i - 1
         _, err := ec.CreateDir(parts[ai], 0)
-        if err != nil {
-			if err.(*etcd.EtcdError).ErrorCode == 105 {
-				return nil
-			}
+        if err != nil && err.(*etcd.EtcdError).ErrorCode != 105 {
             return err
         }
     }

@@ -12,6 +12,9 @@ General libraries for GS Go projects
                     supports changing the log-level and log destination during
                     runtime.
 
+* [etcdutil](/etcdutil) - Helper library for interacting with the go-etcd
+                          package
+
 # About
 
 At grooveshark we use a lot of open-source software, and do what we can to give

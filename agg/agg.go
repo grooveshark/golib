@@ -3,8 +3,11 @@ package agg
 import (
 	"fmt"
 	"sort"
-	"text/tabwriter"
+	"log"
 	"os"
+	"os/signal"
+	"syscall"
+	"text/tabwriter"
 )
 
 type aggMsg struct {
@@ -12,8 +15,13 @@ type aggMsg struct {
 	n float64
 }
 
+type printMsg struct {
+	div   float64
+	retCh chan bool
+}
+
 var inCh = make(chan *aggMsg)
-var printCh = make(chan float64)
+var printCh = make(chan *printMsg)
 
 func init() {
 	go spin()
@@ -56,11 +64,11 @@ func spin() {
 				m[msg.name] = make([]float64, 0, 1024)
 			}
 			m[msg.name] = append(m[msg.name], msg.n)
-		case div := <- printCh:
+		case msg := <- printCh:
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
 			fmt.Println("--- aggregator stats ---")
 			for n, ls := range m {
-				min, max, med, avg := stats(ls, div)
+				min, max, med, avg := stats(ls, msg.div)
 				fmt.Fprintf(
 					w,
 					"%s\ttotal events: %d\tmedian: %f\tavg: %f\tmin/max: %f/%f\n",
@@ -68,6 +76,7 @@ func spin() {
 				)
 			}
 			w.Flush()
+			msg.retCh <- true
 		}
 	}
 
@@ -83,5 +92,25 @@ func Agg(name string, n float64) {
 // being shown in, put in 1 if you want them as they were aggregated. Use 0 if
 // you want your program to panic.
 func Print(div float64) {
-	printCh <- div
+	msg := printMsg{div, make(chan bool)}
+	printCh <- &msg
+	<-msg.retCh
+}
+
+// Creates a signal interrupt so that upon a Ctrl-C (as well as some others)
+// Print(div) will be called and then the process will be exited
+func CreateInterrupt(div float64) {
+	go func() {
+		log.Println("Waiting for signal")
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT)
+		<-c
+		go func() {
+			<-c
+			os.Exit(1)
+		}()
+		log.Println("Got SIG")
+		Print(div)
+		os.Exit(0)
+	}()
 }

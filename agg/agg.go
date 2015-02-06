@@ -2,22 +2,28 @@ package agg
 
 import (
 	"fmt"
-	"sort"
 	"log"
 	"os"
 	"os/signal"
+	"sort"
 	"syscall"
 	"text/tabwriter"
+	"time"
 )
 
 type aggMsg struct {
 	name string
-	n float64
+	n    float64
 }
 
 type printMsg struct {
 	div   float64
 	retCh chan bool
+}
+
+type stats struct {
+	start, end time.Time
+	ls         []float64
 }
 
 var inCh = make(chan *aggMsg)
@@ -29,13 +35,13 @@ func init() {
 
 func sorted(lsa []float64) []float64 {
 	lsb := make([]float64, len(lsa))
-	copy(lsb,lsa)
+	copy(lsb, lsa)
 	sort.Float64s(lsb)
 	return lsb
 }
 
 func median(ls []float64) float64 {
-	return ls[len(ls) / 2]
+	return ls[len(ls)/2]
 }
 
 func average(ls []float64) float64 {
@@ -46,33 +52,43 @@ func average(ls []float64) float64 {
 	return tot / float64(len(ls))
 }
 
-func stats(ls []float64, div float64) (min, max, med, avg float64) {
-	lss := sorted(ls)
+func genStats(s *stats, div float64) (elapsed, rate, min, max, med, avg float64) {
+	lss := sorted(s.ls)
 	min = lss[0] / div
 	max = lss[len(lss)-1] / div
 	avg = average(lss) / div
 	med = median(lss) / div
+	elapsed = s.end.Sub(s.start).Seconds()
+	rate = float64(len(s.ls)) / elapsed
 	return
 }
 
 func spin() {
-	m := map[string][]float64{}
+	m := map[string]*stats{}
 	for {
 		select {
-		case msg := <- inCh:
-			if _, ok := m[msg.name]; !ok {
-				m[msg.name] = make([]float64, 0, 1024)
+		case msg := <-inCh:
+			s, ok := m[msg.name]
+			if !ok {
+				s = &stats{
+					ls:    make([]float64, 0, 1024),
+					start: time.Now(),
+				}
+				m[msg.name] = s
 			}
-			m[msg.name] = append(m[msg.name], msg.n)
-		case msg := <- printCh:
+			s.ls = append(s.ls, msg.n)
+		case msg := <-printCh:
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
-			fmt.Println("--- aggregator stats ---")
-			for n, ls := range m {
-				min, max, med, avg := stats(ls, msg.div)
+			fmt.Println("\n--- aggregator stats ---\n")
+			fmt.Fprintf(w, "\ttotal events\telapsed (s)\trate (events/s)\tmedian\tavg\tmin/max\n")
+			fmt.Fprintf(w, "\t---\t---\t---\t---\t---\t---\n")
+			for n, s := range m {
+				s.end = time.Now()
+				elapsed, rate, min, max, med, avg := genStats(s, msg.div)
 				fmt.Fprintf(
 					w,
-					"%s\ttotal events: %d\tmedian: %f\tavg: %f\tmin/max: %f/%f\n",
-					n, len(ls), med, avg, min, max,
+					"%s\t| %d\t%f\t%f\t%f\t%f\t%f/%f\n",
+					n, len(s.ls), elapsed, rate, med, avg, min, max,
 				)
 			}
 			w.Flush()
